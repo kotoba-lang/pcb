@@ -77,3 +77,48 @@
     (is (str/includes? spice "R1"))
     (is (str/includes? spice "VCC"))
     (is (str/includes? spice ".end"))))
+
+;; Verilog-gate-level and EDIF export reuse the exact symbol/net fixture
+;; from `netlist-spice-export` above so results are directly comparable
+;; across all three formats.
+
+(deftest netlist-verilog-export
+  (let [p (schematic/pin {:name "1" :number "1" :pin-type :passive :position [0.0 0.0] :orientation :right})
+        sym {:id 1 :library-ref "R_0402" :designator "R1" :value "10k"
+             :position [0.0 0.0] :rotation 0.0 :mirror false :pins [p]}
+        nets {1 {:id 1 :name "VCC" :pins [[1 "1"]]}}
+        verilog (netlist/export-netlist :verilog-gate-level [sym] nets)]
+    (is (str/includes? verilog "module top;"))
+    (is (str/includes? verilog "endmodule"))
+    (is (str/includes? verilog "wire VCC;"))
+    (is (str/includes? verilog "R_0402 R1 ("))))
+
+;; mirrors the connectivity check `netlist-spice-export` does, but for the
+;; Verilog named-port form: pin "1" of R1 must resolve to net VCC.
+(deftest netlist-verilog-port-resolution
+  (let [p (schematic/pin {:name "1" :number "1" :pin-type :passive :position [0.0 0.0] :orientation :right})
+        sym {:id 1 :library-ref "R_0402" :designator "R1" :value "10k"
+             :position [0.0 0.0] :rotation 0.0 :mirror false :pins [p]}
+        nets {1 {:id 1 :name "VCC" :pins [[1 "1"]]}}
+        verilog (netlist/export-netlist :verilog-gate-level [sym] nets)]
+    (is (str/includes? verilog ".1(VCC)"))))
+
+(deftest netlist-edif-export
+  (let [p (schematic/pin {:name "1" :number "1" :pin-type :passive :position [0.0 0.0] :orientation :right})
+        sym {:id 1 :library-ref "R_0402" :designator "R1" :value "10k"
+             :position [0.0 0.0] :rotation 0.0 :mirror false :pins [p]}
+        nets {1 {:id 1 :name "VCC" :pins [[1 "1"]]}}
+        edif (netlist/export-netlist :edif [sym] nets)]
+    (is (str/includes? edif "(edif kami_eda"))
+    (is (str/includes? edif "(instance R1 (viewRef R_0402"))
+    (is (str/includes? edif "(net VCC"))
+    (is (str/includes? edif "(portRef 1 (instanceRef R1))"))))
+
+(deftest netlist-export-dispatch
+  (let [p (schematic/pin {:name "1" :number "1" :pin-type :passive :position [0.0 0.0] :orientation :right})
+        sym {:id 1 :library-ref "R_0402" :designator "R1" :value "10k"
+             :position [0.0 0.0] :rotation 0.0 :mirror false :pins [p]}
+        nets {1 {:id 1 :name "VCC" :pins [[1 "1"]]}}]
+    (is (str/includes? (netlist/export-netlist :spice [sym] nets) ".end"))
+    (is (str/includes? (netlist/export-netlist :verilog-gate-level [sym] nets) "endmodule"))
+    (is (str/includes? (netlist/export-netlist :edif [sym] nets) "(edif"))))
