@@ -20,6 +20,7 @@ tool under a collision-free name.
 | `pcb.layout` | `pcb` | Footprint placement, trace routing, vias, copper zone pours, DRC (named `pcb.layout` not `pcb.pcb` — parent namespace is already `pcb`) |
 | `pcb.netlist` | `netlist` | SPICE/Verilog-gate-level/EDIF export (all 3 fully implemented) + BOM generation |
 | `pcb.erc` | `erc` | Electrical Rule Check — 5 rules (unconnected pin, output conflict, undriven power, single-pin net, duplicate designator) |
+| `pcb.route` | *(new, not a restoration)* | Grid-based maze autorouting (Lee's algorithm) — turns a net's placed pads into an actual DRC-clean trace, see below |
 
 Violations are plain maps matching `kotoba-lang/engineer`'s
 `engineer.drc` violation shape (`{:rule-id :severity :message :entity-ids
@@ -49,8 +50,62 @@ connection (no bus/vector nets or multi-bit ports), and everything
 flattens into a single top-level module/cell (no hierarchical
 sub-modules/sub-cells).
 
+`pcb.route` (new, `test/pcb_route_test.cljc`) adds 11 tests / 33
+assertions on top of the above — repo total 23 tests / 61 assertions, 0
+failures. Includes a specifically-constructed obstacle-detour test
+(genuine 28.5mm routed path vs. the 16.0mm unobstructed Manhattan
+minimum between the same two pads, DRC-clean) and a boxed-in-net
+failure case (`:unrouted`, layout left unchanged) — not just the happy
+path.
+
+## Routing (`pcb.route`)
+
+Before this, `pcb.layout/route-trace` was a pure data constructor — it
+recorded whatever `:points` you handed it, with no pathfinding. Nothing
+in the repo actually computed a route. `pcb.route/route-net` does:
+
+- **Lee's algorithm** (C. Y. Lee, 1961) — breadth-first wave propagation
+  over a grid from a source cell, tracing back the shortest
+  obstacle-avoiding 4-connected path once the target is reached. The
+  textbook maze-routing algorithm every PCB autorouter historically
+  started from.
+- **Multi-pin nets** are joined with a Manhattan-distance minimum
+  spanning tree (Prim's algorithm) over the net's pads, then each MST
+  edge is maze-routed independently — an approximation, not a true
+  rectilinear Steiner tree.
+- **Obstacles** are every other net's pads (own physical extent from
+  `:size`, not just their center point, plus DRC clearance), traces,
+  vias, and a 1-cell board-edge border. `route-all` routes nets in
+  ascending net-id order, so an earlier net's trace becomes an obstacle
+  for a later one.
+
+Honest scope — what this is *not*:
+
+- **Single-layer only.** No via insertion to escape a fully boxed-in
+  net; a real autorouter falls back to another layer, this one just
+  reports that net as `:unrouted` (see `route-all`'s `:failed`).
+- **Grid-quantized, 4-connected paths** (default 0.25mm pitch), not the
+  45°/arc corner styles a production tool applies as a post-process.
+- **Sequential, not simultaneous** — no rip-up-and-reroute. Routing
+  order can determine whether a later net finds a path at all.
+- **Circumscribing-circle pad clearance**, not exact rect/oblong
+  footprints — exact for round pads, a safe but conservative
+  over-estimate for rect/oblong ones.
+
+```clojure
+(require '[pcb.layout :as layout] '[pcb.route :as route])
+(def board (layout/pcb-board [[0.0 0.0] [20.0 20.0]] [(layout/layer-def :front "F.Cu" 0.035)]))
+(def pad-a (layout/pad {:center [0 0] :size [1 1] :shape :round :drill nil :layers [:front] :net-id 1}))
+(def pad-b (layout/pad {:center [0 0] :size [1 1] :shape :round :drill nil :layers [:front] :net-id 1}))
+(let [[_ lay] (layout/place-footprint (layout/pcb-layout board) "R" "R1" 2.0 10.0 0 :front [pad-a])
+      [_ lay] (layout/place-footprint lay "R" "R2" 18.0 10.0 0 :front [pad-b])
+      result (route/route-all lay)]
+  result) ; => {:layout ... :routed [1] :failed []}
+```
+
 ## Develop
 
 ```bash
 clojure -M:test
+clojure -M:lint
 ```

@@ -17,8 +17,13 @@
   #?(:clj (format "%.3f" (double x))
      :cljs (.toFixed (double x) 3)))
 
-(defn pad [{:keys [center size shape drill layers]}]
-  {:center center :size size :shape shape :drill drill :layers layers})
+(defn pad
+  "`:net-id` is optional (nil = unassigned) — set it to make this pad a
+  routable endpoint for pcb.route/route-net (added alongside pcb.route;
+  the original kami-eda restoration's `pad` had no net association, since
+  nothing consumed one)."
+  [{:keys [center size shape drill layers net-id]}]
+  {:center center :size size :shape shape :drill drill :layers layers :net-id net-id})
 
 (defn layer-def [layer name thickness-mm] {:layer layer :name name :thickness-mm thickness-mm})
 (defn pcb-board [outline layer-stack] {:outline outline :layer-stack layer-stack})
