@@ -11,7 +11,7 @@
 
 (deftest namespace-loads
   (testing "the restored CLJC namespace loads"
-    (is (some? (the-ns 'pcb)))))
+    (is (some? (find-ns 'pcb)))))
 
 ;; mirrors `schematic_place_and_delete`
 (deftest schematic-place-and-delete
