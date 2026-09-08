@@ -1,7 +1,7 @@
 (ns pcb.netlist
   "Netlist export (SPICE, Verilog gate-level, EDIF) and BOM generation.
   Restored from kami-eda's `netlist` module (deleted PR #82)."
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 (def netlist-formats #{:spice :verilog-gate-level :edif})
 
