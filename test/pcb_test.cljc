@@ -2,7 +2,7 @@
   "Restoration-fidelity tests — one per original kami-eda Rust test
   (kami-engine/kami-eda/src/lib.rs `mod tests`, deleted PR #82)."
   (:require [clojure.test :refer [deftest is testing]]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [pcb]
             [pcb.schematic :as schematic]
             [pcb.layout :as layout]
