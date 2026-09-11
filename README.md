@@ -30,7 +30,7 @@ Violations are plain maps matching `kotoba-lang/engineer`'s
 
 Restored — all 4 modules ported from the original 1031-line Rust
 `lib.rs`, with all 7 original Rust unit tests mirrored 1:1 in
-`test/pcb_test.cljc` (+1 smoke test, +4 netlist-export tests) — 12
+`test/pcb_test.cljk` (+1 smoke test, +4 netlist-export tests) — 12
 tests / 28 assertions, 0 failures. Pure data + pure functions
 throughout; no IO/GPU. `pcb.layout/run-drc`'s `fmt3` helper is
 reader-conditional (`String/format` on JVM, `.toFixed` on CLJS) for
@@ -50,7 +50,7 @@ connection (no bus/vector nets or multi-bit ports), and everything
 flattens into a single top-level module/cell (no hierarchical
 sub-modules/sub-cells).
 
-`pcb.route` (new, `test/pcb_route_test.cljc`) adds 11 tests / 33
+`pcb.route` (new, `test/pcb_route_test.cljk`) adds 11 tests / 33
 assertions on top of the above — repo total 23 tests / 61 assertions, 0
 failures. Includes a specifically-constructed obstacle-detour test
 (genuine 28.5mm routed path vs. the 16.0mm unobstructed Manhattan
